@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestión de precios | Camping</title>
+<style>
+:root{--vino:#6C2E2C;--vino2:#8f2f2f;--amarillo:#FDF28F;--crema:#F7F4BF;--verde:#16803c;--rojo:#b42318;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--vino);color:#111;font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:clamp(16px,4vw,64px)}
+.wrap{max-width:1100px;margin:0 auto}
+button,input,select{font:inherit}
+.btn{border:0;border-radius:999px;padding:10px 20px;font-weight:600;cursor:pointer;background:var(--amarillo);color:#000}
+.btn:hover{filter:brightness(1.08)}
+.btn.osc{background:var(--vino2);color:#fff}
+.btn.sec{background:#eee}
+.btn.peligro{background:var(--rojo);color:#fff}
+:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.barra{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-bottom:20px}
+.barra .grupo{display:flex;flex-wrap:wrap;gap:10px}
+.buscar{display:flex;gap:8px}
+.buscar input{background:var(--crema);border:0;border-radius:999px;padding:10px 16px;width:min(100%,260px)}
+h1{color:var(--amarillo);margin:0 0 20px;font-size:clamp(1.5rem,4vw,2.2rem)}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:28px}
+.chip{border:0;border-radius:999px;padding:8px 18px;font-weight:700;font-size:.75rem;text-transform:uppercase;cursor:pointer;background:var(--amarillo);color:#000}
+.chip.act{background:#fff;color:var(--vino);box-shadow:0 0 0 2px var(--amarillo)}
+.card{background:#fff;border-radius:16px;padding:clamp(14px,3vw,28px);margin-bottom:28px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.card h2{margin:0 0 12px;color:var(--vino);text-transform:uppercase;font-size:1.1rem;border-bottom:2px solid #eee;padding-bottom:10px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:#888;text-align:left;padding:10px 12px}
+td{padding:12px;border-top:1px solid #eee;vertical-align:middle}
+tr:hover td{background:#fafafa}
+.nombre{font-weight:700;font-size:1.05rem}
+.precio{font-weight:900;font-size:1.2rem;color:var(--verde);white-space:nowrap}
+.tag{background:#f1f1f1;color:#666;border-radius:999px;padding:3px 12px;font-size:.7rem;font-weight:700;text-transform:uppercase}
+.acc{text-align:right;white-space:nowrap}
+.acc button{background:none;border:0;cursor:pointer;font-weight:600;padding:4px 8px}
+.acc .ed{color:#4338ca}.acc .bo{color:var(--rojo)}
+.vacio{background:rgba(255,255,255,.1);border:2px dashed rgba(253,242,143,.4);border-radius:16px;padding:40px;text-align:center;color:var(--amarillo)}
+dialog{border:0;border-radius:16px;background:#f8eb87;padding:0;width:min(560px,94vw)}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+form.modal{padding:28px;display:flex;flex-direction:column;gap:14px}
+form.modal h3{margin:0;text-align:center;color:var(--vino);font-size:1.5rem}
+label{font-size:.8rem;font-weight:700;color:#450a0a;margin-left:14px;display:block;margin-bottom:3px}
+.campo{width:100%;border:1px solid #ccc;border-radius:999px;padding:10px 16px;background:#fffbe6}
+.fila{display:flex;gap:12px}.fila>div{flex:1}
+.aviso{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#fff;color:#111;padding:12px 22px;border-radius:999px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:10}
+.pie{color:rgba(255,255,255,.6);font-size:.8rem;text-align:center;margin-top:30px}
+.lock{position:fixed;inset:0;background:var(--vino);display:grid;place-items:center;padding:20px;z-index:20}
+.lock[hidden],[hidden]{display:none!important}
+.lockbox{background:#f8eb87;border-radius:16px;padding:28px;width:min(400px,94vw);display:flex;flex-direction:column;gap:14px}
+.lockbox h2{margin:0;text-align:center;color:var(--vino);font-size:1.5rem}
+.err{color:var(--rojo);font-weight:600;text-align:center;min-height:1.2em}
+@media (max-width:600px){
+  body{padding:12px}
+  h1{margin-bottom:14px}
+  .barra{flex-direction:column;align-items:stretch}
+  .buscar{width:100%}.buscar input{flex:1;width:auto;min-width:0}
+  .card{padding:12px;margin-bottom:18px}
+  td{padding:10px 6px}th{padding:8px 6px}
+  .nombre{font-size:.95rem}
+  .precio{font-size:1.05rem}
+  .acc{white-space:normal}
+  .acc button{display:block;margin-left:auto;padding:6px 4px}
+  .fila{flex-direction:column}
+  form.modal{padding:20px}
+}
+</style>
+</head>
+<body>
+<section class="lock" id="login">
+  <form class="lockbox" id="formLogin">
+    <h2>Ingresar</h2>
+    <div><label for="lEmail">Correo</label><input class="campo" id="lEmail" type="email" autocomplete="username" required></div>
+    <div><label for="lClave">Contraseña</label><input class="campo" id="lClave" type="password" autocomplete="current-password" required></div>
+    <div class="err" id="lErr" role="alert"></div>
+    <button class="btn osc" type="submit" id="lOk">Entrar</button>
+  </form>
+</section>
+
+<main class="wrap" id="app" hidden>
+  <h1>Lista de precios</h1>
+
+  <div class="barra">
+    <div class="grupo">
+      <button class="btn" id="nuevo">+ Nuevo producto</button>
+      <button class="btn osc" id="exportar">Descargar copia</button>
+      <button class="btn osc" id="importar">Cargar copia</button>
+      <button class="btn osc" id="salir">Cerrar sesión</button>
+      <input type="file" id="archivo" accept=".json" hidden>
+    </div>
+    <form class="buscar" id="formBuscar">
+      <input type="search" id="buscar" placeholder="Buscar producto o categoría" aria-label="Buscar">
+      <button class="btn" type="submit">Buscar</button>
+    </form>
+  </div>
+
+  <div class="chips" id="chips"></div>
+  <div id="lista"></div>
+
+  <p class="pie">Los precios se guardan en la nube y se actualizan en todos tus dispositivos. “Descargar copia” te da un respaldo en tu equipo.</p>
+</main>
+
+<dialog id="dlg">
+  <form class="modal" id="form" method="dialog">
+    <h3 id="tituloModal">Nuevo producto</h3>
+    <div>
+      <label for="fNombre">Nombre del producto</label>
+      <input class="campo" id="fNombre" required placeholder="Ej: Gaseosa 1.5L">
+    </div>
+    <div class="fila">
+      <div>
+        <label for="fPrecio">Precio ($)</label>
+        <input class="campo" id="fPrecio" type="number" step="0.01" min="0" required>
+      </div>
+      <div>
+        <label for="fCat">Categoría</label>
+        <select class="campo" id="fCat"></select>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="btn sec" type="button" id="cancelar">Cancelar</button>
+      <button class="btn osc" type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+/* ===== PEGÁ ACÁ LA CONFIGURACIÓN DE TU PROYECTO FIREBASE ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyDlW302HFrswir4PLVuc9CqC_uIxYnUAyA",
+  authDomain: "precios-camping.firebaseapp.com",
+  projectId: "precios-camping",
+  appId: "1:1082780967170:web:deb53f31684cb7f20fe21b"
+};
+/* ============================================================== */
+
+const CATEGORIAS = ['bebidas','helados','almacen','higiene','varios'];
+const INICIALES = [[6,"Agua torasso x 2,25 lt","bebidas"],[8,"Agua saborizada 1,5 lt","bebidas"],[9,"Gaseosa cunington x 2 lt","bebidas"],[10,"Coca cola x 2,5 lt","bebidas"],[11,"Coca cola 1,5 lt","bebidas"],[12,"Cerveza corona lata","bebidas"],[13,"Cerveza lata schneider","bebidas"],[14,"Cerveza lata imperial rubia","bebidas"],[15,"Cerveza lata imperial ipa","bebidas"],[16,"Cerveza lata wasteiner","bebidas"],[17,"Cerveza lata santa fe","bebidas"],[18,"Cerveza lata grolch","bebidas"],[19,"Cerveza munic porron","bebidas"],[20,"Cerveza lata stella","bebidas"],[21,"Cerveza lata imperial roja","bebidas"],[22,"Mojarrero","bebidas"],[23,"Grisines","almacen"],[24,"Bandejitas","almacen"],[25,"Pateles","almacen"],[27,"Off repelente","varios"],[28,"Naipes","varios"],[29,"Fuyi insecticida","varios"],[30,"Aceite","almacen"],[31,"Jabon rexona","higiene"],[32,"Poxipol","varios"],[33,"Porotector solar aerosol 25 fps","varios"],[34,"Papel hinieco c/u","varios"],[35,"Maderitas","varios"],[36,"Carbon 5 kg","varios"],[37,"Carbon 3 kg","varios"],[38,"Hielo","varios"],[39,"Chocolatada grande baggio","varios"],[40,"Chocolatada chica baggio","varios"],[41,"Galletitas serranas x3","almacen"],[42,"Leche 1 lt","almacen"],[43,"Cafe saquitos c/u","almacen"],[44,"Mayonesa 475 gr","almacen"],[45,"Pure de tomate chico","almacen"],[46,"Colgate dentifrico","higiene"],[47,"Jugo tang","almacen"],[48,"Alfajor fantoche triple","almacen"],[49,"Alfajor guaymallen triple","almacen"],[50,"Alfajor guaymallen simple","almacen"],[51,"Saladix","almacen"],[52,"Helado palito agua","helados"],[53,"Helado palito crema","helados"],[54,"Helado carita","helados"],[55,"Helado bom bom","helados"],[56,"Helado tacita","helados"],[57,"Pepas","almacen"],[58,"9 de oro","almacen"],[59,"Campari","bebidas"],[60,"Anana fizz","bebidas"],[61,"Aperol","bebidas"],[62,"Fernet branca 750","bebidas"],[63,"Vino balbo","bebidas"],[64,"Encendedor","varios"],[65,"Shampoo sobre","higiene"],[66,"Cepillo de dientes","higiene"],[67,"Esponja","varios"]]; // [id, nombre, categoria]
+const $ = id => document.getElementById(id);
+const formatoMoneda = n => Number(n).toLocaleString('es-AR',{maximumFractionDigits:0});
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const limpiarTexto = t => { t=t.trim(); return t.charAt(0).toUpperCase()+t.slice(1).toLowerCase(); };
+function aviso(t){
+  const d = document.createElement('div'); d.className='aviso'; d.setAttribute('role','status'); d.textContent=t;
+  document.body.appendChild(d); setTimeout(()=>d.remove(),3000);
+}
+
+let auth, db, desuscribir = null, productos = [], filtro = '', editando = null;
+const col = () => collection(db,'productos');
+
+/* ---------- Inicio y sesión ---------- */
+const configurado = !Object.values(firebaseConfig).some(v => String(v).startsWith('PEGAR'));
+if(!configurado){
+  $('lErr').textContent = 'Falta pegar la configuración de Firebase en index.html.';
+  $('lOk').disabled = true;
+}else{
+  const app = initializeApp(firebaseConfig);
+  auth = getAuth(app); db = getFirestore(app);
+  onAuthStateChanged(auth, u => u ? entrar() : salirPantalla());
+}
+
+$('formLogin').addEventListener('submit', async e=>{
+  e.preventDefault(); $('lErr').textContent = '';
+  try{
+    await signInWithEmailAndPassword(auth, $('lEmail').value.trim(), $('lClave').value);
+    $('formLogin').reset();
+  }catch(err){
+    $('lErr').textContent = err.code === 'auth/network-request-failed'
+      ? 'No hay conexión. Probá de nuevo.' : 'Correo o contraseña incorrectos.';
+  }
+});
+$('salir').onclick = () => signOut(auth);
+
+function entrar(){
+  $('login').hidden = true; $('app').hidden = false;
+  desuscribir = onSnapshot(col(), snap => {
+    productos = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    render();
+  }, () => {
+    $('lista').innerHTML = '<div class="vacio"><p>Esta cuenta no tiene permiso para ver los datos.</p></div>';
+  });
+}
+function salirPantalla(){
+  if(desuscribir){ desuscribir(); desuscribir = null; }
+  productos = []; filtro = ''; $('buscar').value = '';
+  $('app').hidden = true; $('login').hidden = false;
+}
+
+/* ---------- Render ---------- */
+function render(){
+  const f = filtro.toLowerCase();
+  $('chips').innerHTML =
+    `<button class="chip ${!f?'act':''}" data-f="">Ver todo</button>` +
+    CATEGORIAS.map(c=>`<button class="chip ${f===c?'act':''}" data-f="${c}">${c}</button>`).join('');
+
+  const lista = productos.filter(p => !f || p.nombre.toLowerCase().includes(f) || p.categoria.toLowerCase().includes(f))
+    .sort((a,b)=>a.categoria.localeCompare(b.categoria)||a.nombre.localeCompare(b.nombre,'es'));
+
+  if(!lista.length){
+    $('lista').innerHTML = productos.length
+      ? '<div class="vacio"><p>No se encontraron productos con esa búsqueda.</p></div>'
+      : '<div class="vacio"><p>Todavía no hay productos.</p><p><button class="btn" data-sembrar>Cargar los productos iniciales (precio $0)</button></p></div>';
+    return;
+  }
+  const grupos = {};
+  lista.forEach(p => (grupos[p.categoria] ||= []).push(p));
+  $('lista').innerHTML = Object.entries(grupos).map(([cat,items]) => `
+    <section class="card">
+      <h2>${esc(cat)}</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>Producto</th><th style="width:1%">Precio</th><th style="width:1%"></th></tr></thead>
+        <tbody>${items.map(p=>`
+          <tr>
+            <td class="nombre">${esc(p.nombre)}</td>
+            <td class="precio">$${formatoMoneda(p.precio)}</td>
+            <td class="acc"><button class="ed" data-ed="${esc(p.id)}">Editar</button><button class="bo" data-bo="${esc(p.id)}">Borrar</button></td>
+          </tr>`).join('')}
+        </tbody></table></div>
+    </section>`).join('');
+}
+
+/* ---------- Búsqueda y filtros ---------- */
+$('formBuscar').addEventListener('submit',e=>{e.preventDefault(); filtro=$('buscar').value.trim(); render();});
+$('chips').addEventListener('click',e=>{
+  const b=e.target.closest('[data-f]'); if(!b) return;
+  filtro=b.dataset.f; $('buscar').value=filtro; render();
+});
+
+/* ---------- Alta / edición ---------- */
+$('fCat').innerHTML = CATEGORIAS.map(c=>`<option value="${c}">${c[0].toUpperCase()+c.slice(1)}</option>`).join('');
+function abrirModal(p){
+  editando = p || null;
+  $('tituloModal').textContent = p ? 'Editar producto' : 'Nuevo producto';
+  $('fNombre').value = p ? p.nombre : '';
+  $('fPrecio').value = p ? p.precio : '';
+  $('fCat').value = p ? p.categoria : 'varios';
+  $('dlg').showModal();
+}
+$('nuevo').onclick = () => abrirModal();
+$('cancelar').onclick = () => $('dlg').close();
+
+$('form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const nombre = limpiarTexto($('fNombre').value), precio = parseFloat($('fPrecio').value);
+  if(!nombre || !(precio>=0)){ aviso('El nombre y el precio son obligatorios.'); return; }
+  const datos = { nombre, precio, categoria: $('fCat').value };
+  try{
+    if(editando) await setDoc(doc(db,'productos',editando.id), datos);
+    else await addDoc(col(), datos);
+    $('dlg').close();
+    aviso(editando ? 'Producto actualizado correctamente.' : `Producto “${nombre}” ingresado correctamente.`);
+  }catch(_){ aviso('No se pudo guardar. Revisá la conexión y los permisos.'); }
+});
+
+/* ---------- Borrar y cargar iniciales ---------- */
+$('lista').addEventListener('click', async e=>{
+  const ed = e.target.closest('[data-ed]'), bo = e.target.closest('[data-bo]');
+  if(ed) abrirModal(productos.find(p=>p.id===ed.dataset.ed));
+  if(bo && confirm('¿Estás seguro de que deseas eliminar este producto?')){
+    try{ await deleteDoc(doc(db,'productos',bo.dataset.bo)); aviso('Producto eliminado correctamente.'); }
+    catch(_){ aviso('No se pudo borrar. Revisá la conexión y los permisos.'); }
+  }
+  if(e.target.closest('[data-sembrar]')){
+    try{
+      const lote = writeBatch(db);
+      INICIALES.forEach(([id,nombre,categoria]) => lote.set(doc(db,'productos','p'+id), {nombre, precio:0, categoria}));
+      await lote.commit(); aviso('Productos iniciales cargados.');
+    }catch(_){ aviso('No se pudieron cargar los productos.'); }
+  }
+});
+
+/* ---------- Copia de seguridad ---------- */
+$('exportar').onclick = () => {
+  const datos = productos.map(({id,nombre,precio,categoria}) => ({id,nombre,precio,categoria}));
+  const blob = new Blob([JSON.stringify(datos,null,1)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'precios-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(a.href);
+};
+$('importar').onclick = () => $('archivo').click();
+$('archivo').addEventListener('change', async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const datos = JSON.parse(await f.text());
+    if(!Array.isArray(datos)) throw 0;
+    const validos = datos.filter(d => d && typeof d.nombre==='string' && d.nombre.trim() && d.nombre.length<=200 &&
+      typeof d.precio==='number' && d.precio>=0 && CATEGORIAS.includes(d.categoria));
+    if(!validos.length) throw 0;
+    if(!confirm(`Se van a agregar o actualizar ${validos.length} productos. ¿Continuar?`)) return;
+    for(let i=0;i<validos.length;i+=400){
+      const lote = writeBatch(db);
+      validos.slice(i,i+400).forEach(d => {
+        const ref = d.id ? doc(db,'productos',String(d.id)) : doc(col());
+        lote.set(ref,{nombre:d.nombre.trim(), precio:d.precio, categoria:d.categoria});
+      });
+      await lote.commit();
+    }
+    aviso('Copia cargada correctamente.');
+  }catch(_){ aviso('El archivo no es una copia válida.'); }
+  e.target.value='';
+});
+</script>
+</body>
+</html>
